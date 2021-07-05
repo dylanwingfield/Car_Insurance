@@ -1,0 +1,143 @@
+---
+title: "Car Insurance Project EDA"
+author: "Dylan Wingfield, Ashleigh Colquhoun, Philip Solimeo"
+date: "6/27/2021"
+output: pdf_document
+---
+
+#Question 1 - Job Status
+```{r}
+#keep
+library(tidyverse)
+
+carins_test <- read.csv("carInsurance_test.csv")
+carins_train <- read.csv("carInsurance_train.csv") 
+
+NOCarIns <- filter(carins_train, CarInsurance == 0)
+YESCarIns <- filter(carins_train, CarInsurance == 1)
+YESCarIns_Job<- carins_train %>% filter(CarInsurance==1, Job == c("admin.","blue-collar","entrepreneur","housemaid","management",
+                                "retired","self-employed",
+                                "services","services","technician"))
+
+carins_train %>% filter(!is.na(Job),CarInsurance == 1) %>% group_by(Job) %>% 
+  summarise(Job = first(Job),
+            mean_balance = mean(Balance)) %>%
+  ggplot(aes(x=Job, y= mean_balance)) +geom_col()+theme(axis.text.x = element_text(angle = 315, vjust = 1, hjust = 0))+labs(title = "Insurance Balance in Relation to Different Jobs", y = "Mean Balance", x = "Job")
+
+
+carins_train %>% filter(!is.na(Job),CarInsurance == 1)%>% 
+  summarise(mean_balance = mean(Balance)) 
+
+```
+The graphic displayed above shows how the different jobs and how they affect the mean balance of owed after an accident. 
+
+
+#Question 2 - Age/Gender
+```{r}
+library(insuranceData)
+data("AutoClaims")
+
+#keep
+AutoClaims %>%group_by(GENDER,AGE) %>% summarise(AGE = first(AGE),mean_paid = mean(PAID),GENDER=first(GENDER)) %>%  
+  ggplot(aes(x=AGE,y=mean_paid))+geom_point()+facet_wrap(~GENDER)+geom_smooth(method = "lm")+ labs(title = "Accident Amount Paid with respect to Different Ages", y = "Mean Paid", x = "Age")
+
+YESCarIns %>% group_by(Age) %>% summarise(mean_balance = mean(Balance)) %>%
+  ggplot() + geom_point(aes(x = Age, y = mean_balance))+labs(title = "Balance Paid for Different Ages", y = "Mean Balance", x = "Age")
+
+```
+In the first graphic displayed, we can see that there is no correlation in the amount paid with repsect to age for females. For males, we can see that there is a slight positive correlation for mean paid and age. As men get older they will have to pay more.
+
+The second graphic shows mean balance against the age of people. We can see that as people age, they will have to pay more, however this flattens out at around the age of 50.
+
+#Question 3 - Accident vs Insurance Balance
+
+```{r}
+time<- read.csv("time.csv")
+
+time1<- time %>% filter(!is.na(Weather_Timestamp)) %>% separate(Weather_Timestamp,into= c("Date","Time"),sep=" ") %>% 
+select(Date) %>% separate(Date, into = c("month","day","year")) %>% filter(year == "17") %>% 
+  group_by(month) %>% summarise(n = n()) %>% arrange(as.integer(month))
+
+carins_train %>% group_by(LastContactMonth) %>% summarise(mean_balance = mean(Balance)) %>% mutate(month= c("4","8","12","2","1","7","6","3","5","11","10","9")) %>% left_join(time1) %>% ggplot(aes(x=mean_balance,y=n))+geom_point(aes(color = month))+
+  labs(title = "The Amount of Accidents per Month against Mean Balance", y = "Count", x = "Mean Balance")
+
+
+```
+This graphic shows the amount of accidents in different months and the mean amount of the balance. We can see that there is no correlation between the amount of accidents and the mean balance owing.
+
+#Question 4 - Marital Status
+```{r}
+#keep
+carins_train %>% mutate(CarInsurance = as.character(CarInsurance)) %>% group_by(Marital) %>%  select(Marital,CarInsurance) %>% ggplot(aes(x=Marital,fill=CarInsurance))+geom_bar() +labs(title = "Influence of Marital Status on Car Insurance", y = "Count", x = "Marital Status",fill = "Car Insurance Status (1 = yes, 0 = no)")
+```
+This bar graph shows the proportion of people with and without car insurance, in relation to there marital status. We can see that married people have a lesser proportion of people with car insurance. 
+
+#Question 5 - Car Value/Type
+```{r}
+data("dataCar")
+
+dataCar %>% group_by(veh_body) %>% summarise(veh_body = first(veh_body),
+                      mean_claims = mean(numclaims)) %>% 
+                      ggplot(aes(x = veh_body,y= mean_claims))+geom_col()+coord_flip()+
+  labs(title = "Number of Claims per Vehicle Type", y = "Mean Claims", x = "Vehicle Type")
+
+
+dataCar %>% group_by(veh_body) %>% summarise(veh_body = first(veh_body),
+                                             mean_value = mean(veh_value),
+                                             mean_claims = mean(numclaims)) %>% 
+   ggplot(aes(x = mean_claims,y= mean_value))+geom_point(aes(color=veh_body))+
+  labs(title = "Value of the Vehicle Type with respect to the Number of Claims", y = "Mean Value of the Vehicle Type", x = "Number of Claims", color = "Vehicle Type")
+```
+The first graphic shows the mean claims per vehicle type. 
+
+The second graphic displays the relationship between the different vehicle types value and the number of claims.
+
+
+#Question 6 - Household Insurance
+
+```{r}
+carins_train %>% ggplot(aes(x = factor(HHInsurance),fill=factor(CarInsurance))) +
+geom_bar()+
+  labs(x= "House Insurance (1 = yes, 0 = no)", fill = "Car Insurance Status (1 = yes, 0 = no)", title = "House Insurance and Car Insurance")
+
+```
+This graphic shows the proportion of people who does or does not have house insurance and whether or not they also have car insurance. 
+
+#Question 7 - Car Loan
+```{r}
+carins_train %>% mutate(CarLoan = as.character(CarLoan)) %>% group_by(CarLoan) %>% 
+  summarise(CarLoan = first(CarLoan),
+            mean_balance = mean(Balance)) %>% 
+  ggplot(aes(x=CarLoan,y=mean_balance))+geom_col()+ labs(x="Car Loan (1  = yes, 0 = no)", y = "Mean Balance", title = "Does having a Car Loan affect the Balance Owed")
+
+```
+This graphic shown shows how having a car loan or not affects the balance needed to be paid after an accident occurred.
+
+
+```{r}
+#keep
+carins_train %>% ggplot(aes(x = factor(HHInsurance),fill=factor(CarInsurance))) +
+geom_bar(position = "fill")+
+  labs(x= "House Insurance (1 = yes, 0 = no)", fill = "Car Insurance Status (1 = yes, 0 = no)", title = "House Insurance and Car Insurance") + facet_wrap(~CarLoan)
+
+```
+
+This graphic shows the proportion of people with car insurance for one of the four cases:
+
+People without a car loan and with out house insurance.
+
+People without a car loan and with house insurance.
+
+People with a car loan and with out house insurance.
+
+People with a car loan and with house insurance.
+
+
+
+
+
+
+
+
+
+
